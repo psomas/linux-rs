@@ -101,6 +101,8 @@ pub mod platform;
 mod types;
 pub mod user_ptr;
 
+pub mod ldisc;
+
 #[cfg(CONFIG_KUNIT)]
 pub mod kunit;
 

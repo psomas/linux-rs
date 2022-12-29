@@ -34,6 +34,8 @@
 #include <linux/security.h>
 #include <linux/slab.h>
 #include <linux/sysctl.h>
+#include <linux/tty.h>
+#include <linux/tty_ldisc.h>
 #include <linux/uaccess.h>
 #include <linux/uio.h>
 #include <uapi/linux/android/binder.h>
