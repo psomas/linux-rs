@@ -19,6 +19,7 @@
 #define PTE_SPECIAL		(_AT(pteval_t, 1) << 56)
 #define PTE_DEVMAP		(_AT(pteval_t, 1) << 57)
 #define PTE_PROT_NONE		(_AT(pteval_t, 1) << 58) /* only when !PTE_VALID */
+#define PTE_SOFT_DIRTY         (_AT(pteval_t, 1) << 58) /* only when PTE_VALID */
 
 /*
  * This bit indicates that the entry is present i.e. pmd_page()

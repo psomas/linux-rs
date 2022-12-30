@@ -180,9 +180,38 @@ static inline pmd_t set_pmd_bit(pmd_t pmd, pgprot_t prot)
 	return pmd;
 }
 
+#ifdef CONFIG_HAVE_ARCH_SOFT_DIRTY
+static inline pte_t pte_soft_dirty(pte_t pte)
+{
+       bool dirty = !!(pte_val(pte) & PTE_SOFT_DIRTY);
+       WARN_ON(dirty && !pte_valid(pte));
+       return dirty;
+}
+
+static inline pte_t pte_mksoft_dirty(pte_t pte)
+{
+       WARN_ON(!pte_valid(pte));
+       return set_pte_bit(__pgprot(PTE_SOFT_DIRTY));
+}
+
+static inline pte_t pte_clear_soft_dirty(pte_t pte)
+{
+       return clear_pte_bit(__pgprot(PTE_SOFT_DIRTY));
+}
+
+#define pmd_soft_dirty(pmd)    pte_soft_dirty(pmd_pte(pmd))
+#define pmd_mksoft_dirty(pmd)  pte_pmd(pte_mksoft_dirty(pmd_pte(pmd)))
+#define pmd_clear_soft_dirty(pmd) pte_pmd(pte_clear_soft_dirty(pmd_pte(pmd)))
+
+#endif /* CONFIG_HAVE_ARCH_SOFT_DIRTY */
+
 static inline pte_t pte_mkwrite(pte_t pte)
 {
 	pte = set_pte_bit(pte, __pgprot(PTE_WRITE));
+#ifdef CONFIG_HAVE_ARCH_SOFT_DIRTY
+	pte = pte_mksoft_dirty(pte);
+#endif /* CONFIG_HAVE_ARCH_SOFT_DIRTY */
+
 	pte = clear_pte_bit(pte, __pgprot(PTE_RDONLY));
 	return pte;
 }
@@ -994,6 +1023,7 @@ static inline pmd_t pmdp_establish(struct vm_area_struct *vma,
  *	bits 3-7:	swap type
  *	bits 8-57:	swap offset
  *	bit  58:	PTE_PROT_NONE (must be zero)
+ *	bit  59:	swap software dirty tracking
  */
 #define __SWP_TYPE_SHIFT	3
 #define __SWP_TYPE_BITS		5
@@ -1013,6 +1043,36 @@ static inline pmd_t pmdp_establish(struct vm_area_struct *vma,
 #define __pmd_to_swp_entry(pmd)		((swp_entry_t) { pmd_val(pmd) })
 #define __swp_entry_to_pmd(swp)		__pmd((swp).val)
 #endif /* CONFIG_ARCH_ENABLE_THP_MIGRATION */
+
+#ifdef CONFIG_MEM_SOFT_DIRTY
+#define PTE_SWP_SOFT_DIRTY (1UL << (__SWP_OFFSET_SHIFT + __SWP_OFFSET_BITS + __SWP_PROT_NONE_BITS))
+#else
+#define PTE_SWP_SOFT_DIRTY 0UL
+#endif /* CONFIG_MEM_SOFT_DIRTY */
+
+#ifdef CONFIG_HAVE_ARCH_SOFT_DIRTY
+static inline bool pte_swp_soft_dirty(pte_t pte)
+{
+       return !!(pte_val(pte) & PTE_SWP_SOFT_DIRTY);
+}
+
+static inline pte_t pte_swp_mksoft_dirty(pte_t pte)
+{
+       return set_pte_bit(pte, __pgprot(PTE_SWP_SOFT_DIRTY));
+}
+
+static inline pte_t pte_swp_clear_soft_dirty(pte_t pte)
+{
+       return clear_pte_bit(pte, __pgprot(PTE_SWP_SOFT_DIRTY));
+}
+
+#ifdef CONFIG_ARCH_ENABLE_THP_MIGRATION
+#define pmd_swp_soft_dirty(pmd)    pte_swp_soft_dirty(pmd_pte(pmd))
+#define pmd_swp_mksoft_dirty(pmd)  pte_pmd(pte_swp_mksoft_dirty(pmd_pte(pmd)))
+#define pmd_swp_clear_soft_dirty(pmd) pte_pmd(pte_swp_clear_soft_dirty(pmd_pte(pmd)))
+
+#endif /* CONFIG_ARCH_ENABLE_THP_MIGRATION */
+#endif /* CONFIG_HAVE_ARCH_SOFT_DIRTY */
 
 /*
  * Ensure that there are not more swap files than can be encoded in the kernel
